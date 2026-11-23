@@ -1,16 +1,14 @@
-﻿
-# Search Design — Marketplace NoSQL
+﻿# Search Design — Marketplace NoSQL
 
 ## 1. Objectif
 
-Ce module permet de rechercher les produits dans MongoDB
-selon plusieurs critères et de calculer des facettes.
+Ce module permet de rechercher les produits dans MongoDB selon plusieurs critères, de calculer des facettes et d'évaluer les performances des requêtes.
 
-Les tests utilisent la catégorie "All Beauty".
+L'implémentation utilise directement **MongoDB Shell (`mongosh`)**, sans PyMongo.
 
 ## 2. Modèle des produits
 
-La collection `products` respecte le schéma commun :
+La collection `products` contient les champs communs suivants :
 
 - `product_id` : String
 - `title` : String
@@ -21,69 +19,52 @@ La collection `products` respecte le schéma commun :
 - `rating.average` : Number
 - `rating.count` : Number
 
-Le modèle peut également contenir les champs `features`,
-`description`, `attributes`, `images` et `source`.
+Des champs supplémentaires peuvent être présents selon les catégories : `features`, `description`, `attributes`, `images` et `source`.
 
 ## 3. Recherche multicritère
 
-Fichier : `search/product_search.py`
+**Fichier :** `mongosh/search_products.js`
 
-Fonction : `search_products()`
+La recherche utilise `db.products.find()` et permet de filtrer les produits selon :
 
-Critères disponibles :
+- La catégorie principale
+- La sous-catégorie
+- Le prix minimum et maximum
+- La note minimale
 
-- Marque : `brand`
-- Prix minimum : `price >= min_price`
-- Prix maximum : `price <= max_price`
-- Note minimale : `rating.average >= min_rating`
-- Catégorie principale : `category.main`
-- Sous-catégorie : `category.path`
+Les comparaisons de prix utilisent `NumberDecimal()` pour respecter le type Decimal128.
 
-Les prix sont convertis en Decimal128 avant la recherche.
-
-Exemple :
-
-```python
-results = search_products(
-    min_price=80,
-    max_price=130,
-    min_rating=4.0,
-    category="All Beauty",
-    subcategory="Hair Care"
-)
-```
-
-Résultat sur les données de test :
+**Résultats validés :**
 
 - B001 : Hair Chalk Pink
 - B002 : Hair Shampoo
 
 ## 4. Recherche à facettes
 
-Fichier : `search/facet_search.py`
+**Fichier :** `mongosh/facet_search.js`
 
-Fonction : `facet_search()`
-
-L'opérateur MongoDB `$facet` calcule simultanément :
+L'agrégation MongoDB `$facet` permet de calculer simultanément :
 
 - Le nombre de produits par marque
 - Le nombre de produits par tranche de prix
 - Le nombre de produits par intervalle de notes
 
-Sur les trois produits de test :
+**Résultats sur les trois produits de test :**
 
 | Facette | Résultat |
 |---|---|
 | Marques | CeraVe : 1, ColorPop : 1, L'Oreal : 1 |
-| Prix [0,100[ | 1 |
+| Prix [50,100[ | 1 |
 | Prix [100,200[ | 2 |
-| Notes [4,5[ | 3 |
+| Notes [4,5.01[ | 3 |
 
 ## 5. Index MongoDB
 
-Fichier : `search/search_indexes.py`
+**Fichier :** `mongosh/search_indexes.js`
 
-Index créés dans `products` :
+Les index sont créés avec `createIndex()`.
+
+Index de la collection `products` :
 
 - `idx_brand`
 - `idx_price`
@@ -92,64 +73,54 @@ Index créés dans `products` :
 - `idx_category_path`
 - `idx_category_price_rating`
 
-L'index `idx_category_path` est multikey,
-car `category.path` est un tableau.
+L'index sur `category.path` est multikey, car ce champ contient un tableau.
+
+La collection `categories` utilise également des index sur `category_id`, `parent_id` et `ancestors`.
 
 ## 6. Benchmark
 
-Fichier : `benchmarks/search_benchmark.py`
+**Fichier :** `mongosh/search_benchmark.js`
 
-La comparaison utilise `explain()` avec
-`executionStats` et deux stratégies :
+La comparaison utilise `explain("executionStats")` avec deux stratégies :
 
-- Avec index : `IXSCAN` + `FETCH`
-- Sans index : `COLLSCAN`
+- Avec index composé : recherche indexée.
+- Sans index : parcours complet de la collection (`COLLSCAN`).
 
-Résultats sur trois produits :
+**Résultats mesurés :**
 
 | Indicateur | Avec index | Sans index |
-|---|---|---|
-| Documents retournés | 3 | 3 |
-| Documents examinés | 3 | 3 |
-| Clés examinées | 3 | 0 |
-| Temps affiché | 0 ms | 0 ms |
+|---|---:|---:|
+| Produits retournés | 2 | 2 |
+| Documents examinés | 2 | 3 |
+| Clés examinées | 2 | 0 |
+| Temps d'exécution | 0 ms | 0 ms |
 
-Ces résultats confirment l'utilisation de l'index,
-mais ne démontrent pas de gain de performance
-sur un aussi petit ensemble de données.
+L'index réduit le nombre de documents examinés. Toutefois, avec seulement trois produits, aucun gain de temps mesurable ne peut être démontré.
 
-## 7. Tests
+## 7. Exécution et validation
 
-Fichier : `tests/test_search.py`
+Les scripts sont exécutés avec MongoDB Shell depuis la racine du projet.
 
-Cinq tests vérifient :
+Exemple :
 
-1. Recherche par catégorie
-2. Recherche par marque
-3. Recherche par prix et note
-4. Type Decimal128 du prix
-5. Recherche à facettes
+```powershell
+mongosh "mongodb://localhost:27017/marketplace_db" --file mongosh/search_products.js
+```
 
-Les cinq tests ont réussi avec Pytest.
+Les scripts suivants ont été exécutés avec succès :
+
+- `mongosh/search_products.js`
+- `mongosh/facet_search.js`
+- `mongosh/category_hierarchy.js`
+- `mongosh/search_indexes.js`
+- `mongosh/search_benchmark.js`
+
+Les vérifications ont été effectuées sur une base locale contenant trois produits et six catégories.
 
 ## 8. Limites
 
-Les tests actuels utilisent trois produits fictifs.
+Les données actuelles sont fictives et servent uniquement à valider les requêtes MongoDB.
 
-Les performances devront être réévaluées avec un
-volume plus important de produits réels issus
-du dataset Amazon Reviews 2023.
-### Validation globale
+Les performances devront être réévaluées sur un volume plus important de produits provenant du dataset Amazon Reviews 2023.
 
-La suite complète des tests du module Search & Categories
-a été exécutée avec la commande :
-
-python -m pytest tests/ -v
-
-Résultat : 16 tests réussis en 1.08 seconde.
-
-Les tests couvrent également :
-- La gestion des catégories hiérarchiques
-- La compatibilité du schéma des produits
-- Les recherches avec des valeurs manquantes
-- Les facettes avec des valeurs manquantes
+La compatibilité avec les données réelles du catalogue commun devra également être vérifiée avant l'intégration finale.

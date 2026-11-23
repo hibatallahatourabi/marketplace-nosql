@@ -1,5 +1,0 @@
-pymongo
-dnspython
-certifi
-python-dotenv
-pytest

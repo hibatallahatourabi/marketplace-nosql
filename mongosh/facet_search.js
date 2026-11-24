@@ -1,7 +1,8 @@
 // Recherche a facettes avec MongoDB
-// Execution : mongosh marketplace_db --file mongosh/facet_search.js
+// Execution locale :
+// mongosh "mongodb://localhost:27017/marketplace_db" --file mongosh/facet_search.js
 
-db = db.getSiblingDB("marketplace_db");
+
 
 print("=== Recherche a facettes ===");
 
@@ -17,7 +18,14 @@ const result = db.products.aggregate([
 
       // Nombre de produits par tranche de prix
       price_ranges: [
-        { $match: { price: { $type: "decimal" } } },
+        {
+          $match: {
+            price: {
+              $type: "number",
+              $gte: NumberDecimal("0")
+            }
+          }
+        },
         {
           $bucket: {
             groupBy: "$price",
@@ -34,6 +42,12 @@ const result = db.products.aggregate([
         }
       ],
 
+      // Nombre de produits sans prix
+      missing_prices: [
+        { $match: { price: null } },
+        { $count: "count" }
+      ],
+
       // Nombre de produits par tranche de note
       ratings: [
         { $match: { "rating.average": { $type: "number" } } },
@@ -46,6 +60,16 @@ const result = db.products.aggregate([
           }
         }
       ]
+    }
+  },
+  {
+    $set: {
+      missing_prices: {
+        $ifNull: [
+          { $arrayElemAt: ["$missing_prices.count", 0] },
+          0
+        ]
+      }
     }
   }
 ]).toArray();

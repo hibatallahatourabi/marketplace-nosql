@@ -1,40 +1,71 @@
-// Hierarchie des categories - Search & Categories
-// Execution avec mongosh
+// Recherche hierarchique des categories avec mongosh
 
-db = db.getSiblingDB("marketplace_db");
+const main = "All Beauty";
 
-print("=== Categories et sous-categories de Hair Care ===");
+const path = [
+  "Beauty & Personal Care",
+  "Hair Care"
+];
 
-// Recuperer la categorie et tous ses descendants
+// Identifiant stable de la categorie
+const categoryId = JSON.stringify([main, ...path]);
+
+print("=== Categorie selectionnee ===");
+
+const category = db.categories.findOne({
+  category_id: categoryId
+});
+
+if (!category) {
+  throw new Error("Categorie introuvable");
+}
+
+printjson(category);
+
+print("=== Categorie et ses descendants ===");
+
 const categories = db.categories.find(
   {
     $or: [
-      { category_id: "hair_care" },
-      { ancestors: "hair_care" }
+      { category_id: categoryId },
+      { ancestors: categoryId }
     ]
   },
   {
     _id: 0,
-    name: 1
+    category_id: 1,
+    name: 1,
+    path: 1,
+    depth: 1
   }
-).toArray();
+).sort({ depth: 1, name: 1 }).toArray();
 
 printjson(categories);
 
-// Recuperer les noms des categories
-const categoryNames = categories.map(c => c.name);
+print("=== Produits de la categorie et ses descendants ===");
 
-print("=== Produits de Hair Care et ses sous-categories ===");
+// Recherche par prefixe exact du chemin
+const filter = {
+  "category.main": main
+};
 
-// Rechercher tous les produits correspondants
-db.products.find(
-  {
-    "category.path": { $in: categoryNames }
-  },
+path.forEach((name, index) => {
+  filter["category.path." + index] = name;
+});
+
+const products = db.products.find(
+  filter,
   {
     _id: 0,
     product_id: 1,
     title: 1,
     category: 1
   }
-).forEach(printjson);
+).sort({ product_id: 1 }).toArray();
+
+printjson(products);
+
+printjson({
+  categories_found: categories.length,
+  products_found: products.length
+});

@@ -3,16 +3,35 @@
 
 print("=== Benchmark des performances ===");
 
+const main = "All Beauty";
+
 const filtre = {
-  "category.main": "All Beauty",
+  $or: [
+    {
+      "category.main": main
+    },
+    {
+      "category.main": null,
+      "category.path.0": main
+    },
+    {
+      "category.main": /^\s*$/,
+      "category.path.0": main
+    }
+  ],
+
   "category.path.0": "Beauty & Personal Care",
   "category.path.1": "Hair Care",
+
   price: {
     $type: "number",
     $gte: NumberDecimal("0"),
     $lte: NumberDecimal("100")
   },
-  "rating.average": { $gte: 4 }
+
+  "rating.average": {
+    $gte: 4
+  }
 };
 
 const tri = {

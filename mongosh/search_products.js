@@ -1,40 +1,52 @@
-// Recherche multicritere - Search & Categories
-// Implementation avec mongosh
+// Recherche multicritere avec mongosh
 
 print("=== Recherche multicritere ===");
 
-// Criteres de recherche
 const criteria = {
-  main: "All Beauty",
+  main: "Beauty & Personal Care",
   path: ["Beauty & Personal Care", "Hair Care"],
   brand: null,
-  minPrice: 0,
-  maxPrice: 100,
-  minRating: 4
+  minPrice: null,
+  maxPrice: null,
+  minRating: null
 };
 
 const filter = {};
 
-// Categorie principale
+// Filtrer selon la categorie principale effective
 if (criteria.main) {
-  filter["category.main"] = criteria.main;
+  filter.$or = [
+    {
+      "category.main": criteria.main
+    },
+    {
+      "category.main": null,
+      "category.path.0": criteria.main
+    },
+    {
+      "category.main": /^\s*$/,
+      "category.path.0": criteria.main
+    }
+  ];
 }
 
-// Chemin hierarchique
+// Filtrer selon le chemin hierarchique
 if (criteria.path && criteria.path.length > 0) {
   criteria.path.forEach((name, index) => {
     filter["category.path." + index] = name;
   });
 }
 
-// Marque optionnelle
+// Filtrer selon la marque
 if (criteria.brand) {
   filter.brand = criteria.brand;
 }
 
-// Intervalle de prix
-if (criteria.minPrice != null || criteria.maxPrice != null) {
-
+// Filtrer selon le prix
+if (
+  criteria.minPrice != null ||
+  criteria.maxPrice != null
+) {
   filter.price = {
     $type: "number",
     $gte: NumberDecimal(
@@ -49,7 +61,7 @@ if (criteria.minPrice != null || criteria.maxPrice != null) {
   }
 }
 
-// Note minimale
+// Filtrer selon la note
 if (criteria.minRating != null) {
   filter["rating.average"] = {
     $gte: criteria.minRating
@@ -57,10 +69,9 @@ if (criteria.minRating != null) {
 }
 
 print("=== Filtres appliques ===");
-
 printjson(filter);
 
-// Recherche des produits
+// Executer la recherche
 const products = db.products.find(
   filter,
   {
@@ -78,7 +89,6 @@ const products = db.products.find(
 }).toArray();
 
 print("=== Produits trouves ===");
-
 printjson(products);
 
 printjson({

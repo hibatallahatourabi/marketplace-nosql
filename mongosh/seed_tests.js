@@ -108,3 +108,55 @@ printjson({
   index_produits: indexesDb.products.getIndexes().length,
   index_categories: indexesDb.categories.getIndexes().length
 });
+// Preparation des tests de categories principales manquantes
+
+const nullTestDb = db.getSiblingDB("marketplace_null_test");
+
+nullTestDb.products.deleteMany({});
+nullTestDb.categories.deleteMany({});
+
+nullTestDb.products.insertMany([
+  {
+    product_id: "NULL001",
+    category: {
+      main: null,
+      path: [
+        "Beauty & Personal Care",
+        "Hair Care",
+        "Shampoo"
+      ]
+    }
+  },
+  {
+    product_id: "NULL002",
+    category: {
+      main: "All Beauty",
+      path: [
+        "Beauty & Personal Care",
+        "Hair Care",
+        "Shampoo"
+      ]
+    }
+  }
+]);
+
+nullTestDb.categories.createIndex(
+  { category_id: 1 },
+  { unique: true }
+);
+
+const previousDb = db;
+
+try {
+  db = nullTestDb;
+  load("mongosh/sync_categories.js");
+} finally {
+  db = previousDb;
+}
+
+print("=== BASE NULL TEST PREPAREE ===");
+
+printjson({
+  products: nullTestDb.products.countDocuments({}),
+  categories: nullTestDb.categories.countDocuments({})
+});

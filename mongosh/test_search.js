@@ -393,7 +393,98 @@ test(
     Object.keys(index.key).length === 1
   )
 );
+// Tests des categories principales manquantes
 
+const nullDb = db.getSiblingDB("marketplace_null_test");
+
+const derivedCategoryId = JSON.stringify([
+  "Beauty & Personal Care",
+  "Beauty & Personal Care",
+  "Hair Care"
+]);
+
+const normalCategoryId = JSON.stringify([
+  "All Beauty",
+  "Beauty & Personal Care",
+  "Hair Care"
+]);
+
+test(
+  "Synchronisation des categories avec main null",
+  nullDb.categories.countDocuments({}) === 6
+);
+
+test(
+  "Categorie principale deduite depuis path",
+  nullDb.categories.countDocuments({
+    category_id: derivedCategoryId,
+    main: "Beauty & Personal Care"
+  }) === 1
+);
+
+test(
+  "Conservation de la categorie principale originale",
+  nullDb.categories.countDocuments({
+    category_id: normalCategoryId,
+    main: "All Beauty"
+  }) === 1
+);
+
+test(
+  "Conservation du produit original avec main null",
+  nullDb.products.countDocuments({
+    product_id: "NULL001",
+    "category.main": null
+  }) === 1
+);
+
+const derivedProducts = nullDb.products.find({
+  $or: [
+    {
+      "category.main": "Beauty & Personal Care"
+    },
+    {
+      "category.main": null,
+      "category.path.0": "Beauty & Personal Care"
+    },
+    {
+      "category.main": /^\s*$/,
+      "category.path.0": "Beauty & Personal Care"
+    }
+  ],
+  "category.path.0": "Beauty & Personal Care",
+  "category.path.1": "Hair Care"
+}).toArray();
+
+test(
+  "Recherche avec categorie principale deduite",
+  derivedProducts.length === 1 &&
+  derivedProducts[0].product_id === "NULL001"
+);
+
+test(
+  "Descendants de la categorie deduite",
+  nullDb.categories.countDocuments({
+    ancestors: derivedCategoryId
+  }) === 1
+);
+
+test(
+  "Absence de doublons apres deduction",
+  nullDb.categories.aggregate([
+    {
+      $group: {
+        _id: "$category_id",
+        count: { $sum: 1 }
+      }
+    },
+    {
+      $match: {
+        count: { $gt: 1 }
+      }
+    }
+  ]).toArray().length === 0
+);
 
 print("\n=== RESULTATS ===");
 print("Tests reussis : " + passed);

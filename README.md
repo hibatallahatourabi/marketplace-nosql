@@ -128,3 +128,17 @@ Run seed and automated test scripts only on the local MongoDB server, never on t
 
 - `docs/search_design.md`
 - `docs/category_design.md`
+## Final Validation Results
+
+The Search & Categories module was validated locally using
+the final 5,000-product dataset.
+
+- 1,470 generated categories
+- 43 automated tests passed, 0 failures
+- 70.56% reduction in examined documents using the compound index
+- 47.62% reduction in hierarchy query time using Ancestors Array
+
+See [Final Validation Report](docs/final_validation.md)
+for detailed results, benchmarks and reproduction instructions.
+
+Atlas integration is pending team coordination.

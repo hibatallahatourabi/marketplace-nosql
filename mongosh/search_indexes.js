@@ -2,12 +2,32 @@
 // Implementation avec mongosh
 
 print("=== Configuration des index MongoDB ===");
+// Verifier que la collection products existe
+if (!db.getCollectionNames().includes("products")) {
+  throw new Error(
+    "La collection products n'existe pas dans la base " +
+    db.getName() +
+    ". Operation annulee."
+  );
+}
 
 // Verifier les index existants avant creation
 function ensureIndex(collection, keys, options) {
-  if (!db.getCollectionNames().includes(collection.getName())) {
-  db.createCollection(collection.getName());
-}
+
+  const collectionName = collection.getName();
+
+  if (!db.getCollectionNames().includes(collectionName)) {
+
+    if (collectionName !== "categories") {
+      throw new Error(
+        "Creation non autorisee : " + collectionName
+      );
+    }
+
+    db.createCollection("categories");
+
+    print("[COLLECTION CREEE] categories");
+  }
 
   const existing = collection.getIndexes().find(index =>
     JSON.stringify(index.key) === JSON.stringify(keys) &&
@@ -24,7 +44,25 @@ function ensureIndex(collection, keys, options) {
 
     return existing.name;
   }
+  // Detecter les conflits d'index
+const conflict = collection.getIndexes().find(index =>
+  index.name === options.name ||
+  JSON.stringify(index.key) === JSON.stringify(keys)
+);
 
+if (conflict) {
+  print("[CONFLIT] Collection : " + collectionName);
+
+  print("Index existant :");
+  printjson(conflict);
+
+  print("Index demande :");
+  printjson({ key: keys, ...options });
+
+  throw new Error(
+    "Specifications d'index incompatibles. Operation annulee."
+  );
+}
   const name = collection.createIndex(keys, options);
 
   print("[CREE] " + collection.getName() +

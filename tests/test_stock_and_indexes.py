@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.operations import update_stock as us
-from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index
+from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, explain_summary
 from src.queries.reviews import sort_spec, SORTS
 
 
@@ -91,3 +91,25 @@ def test_index_non_unique_existant_pas_touche(db):
     with pytest.raises(RuntimeError):
         ensure_inventory_unique_index(db)
     assert "idx_inventory_product_id" in [i["name"] for i in db.inventory.list_indexes()]
+
+
+def test_explain_summary_ignore_les_plans_rejetes():
+    explain = {"queryPlanner": {
+        "winningPlan": {"stage": "LIMIT", "inputStage": {"stage": "FETCH", "inputStage": {
+            "stage": "IXSCAN", "indexName": "reviews_product_recent"}}},
+        "rejectedPlans": [{"stage": "SORT", "inputStage": {"stage": "IXSCAN", "indexName": "autre"}}]}}
+    stages, indexes = explain_summary(explain)
+    assert "SORT" not in stages and indexes == ["reviews_product_recent"]
+
+
+def test_explain_summary_detecte_un_tri_en_memoire():
+    explain = {"queryPlanner": {"winningPlan": {"stage": "SORT", "inputStage": {"stage": "IXSCAN", "indexName": "x"}}}}
+    assert "SORT" in explain_summary(explain)[0]
+
+
+def test_explain_summary_plan_imbrique_queryPlan():
+    explain = {"queryPlanner": {"winningPlan": {"isCached": False, "queryPlan": {
+        "stage": "LIMIT", "inputStage": {"stage": "FETCH", "inputStage": {"stage": "IXSCAN", "indexName": "i"}}},
+        "slotBasedPlan": {"slots": "..."}}}}
+    stages, indexes = explain_summary(explain)
+    assert stages == ["LIMIT", "FETCH", "IXSCAN"] and indexes == ["i"]

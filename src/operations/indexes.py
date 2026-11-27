@@ -55,3 +55,25 @@ def ensure_products_text_index(db):
             return idx["name"]
     return db.products.create_index([("title", "text"), ("brand", "text")], name="idx_products_text",
                                     weights={"title": 10, "brand": 3})
+
+
+def explain_summary(explain):
+    """Resume le plan RETENU d'un explain() : (etapes, noms d'index). Ignore rejectedPlans."""
+    winning = explain.get("queryPlanner", {}).get("winningPlan", {})
+    stages, indexes = [], []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "stage" in node:
+                stages.append(node["stage"])
+            if "indexName" in node:
+                indexes.append(node["indexName"])
+            for k, v in node.items():
+                if k != "slotBasedPlan":
+                    walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+
+    walk(winning)
+    return stages, indexes

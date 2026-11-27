@@ -3,12 +3,12 @@
   python scripts/ensure_indexes.py            # cree / met a jour les index
   python scripts/ensure_indexes.py --explain  # + verifie chaque tri avec explain()
 """
-import argparse, json, sys
+import argparse, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.db import get_db
-from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, ensure_products_text_index
+from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, ensure_products_text_index, explain_summary
 from src.queries.reviews import sort_spec, SORTS
 
 
@@ -35,11 +35,9 @@ def main():
             sys.exit("reviews est vide")
         pid = sample["product_id"]
         for name in SORTS:
-            plan = json.dumps(db.reviews.find({"product_id": pid}).sort(sort_spec(name)).limit(10).explain(), default=str)
-            blocking = '"stage": "SORT"' in plan
-            ixscan = '"stage": "IXSCAN"' in plan
-            print(f"tri {name:12s} IXSCAN={ixscan} tri_en_memoire={blocking}")
-
+            plan = db.reviews.find({"product_id": pid}).sort(sort_spec(name)).limit(10).explain()
+            stages, indexes = explain_summary(plan)
+            print(f"tri {name:12s} index={indexes} etapes={stages} tri_en_memoire={'SORT' in stages}")
 
 if __name__ == "__main__":
     main()

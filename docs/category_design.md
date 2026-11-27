@@ -388,7 +388,7 @@ Comparer expérimentalement les performances de recherche de tous les descendant
 
 ### 11.2 Données utilisées
 
-Le benchmark utilise la collection locale de 1 470 catégories générées à partir des 5 000 produits réels.
+Le benchmark utilise les 1 470 catégories générées à partir des 5 000 produits réels, en local et sur MongoDB Atlas.
 
 La catégorie sélectionnée est :
 
@@ -446,7 +446,7 @@ Le benchmark utilise :
 - Une mesure du temps de récupération des résultats.
 - Une comparaison des identifiants retournés.
 
-### 11.6 Résultats expérimentaux
+### 11.6 Résultats expérimentaux locaux
 
 | Exécution | Parent References | Ancestors Array |
 |---|---:|---:|
@@ -463,7 +463,7 @@ Le benchmark utilise :
 | Descendants retournés | 564 | 564 |
 | Identifiants identiques | Oui | Oui |
 
-### 11.7 Analyse des résultats
+### 11.7 Analyse des résultats locaux
 
 Le modèle Ancestors Array permet :
 
@@ -474,6 +474,84 @@ Le modèle Ancestors Array permet :
 Ces résultats soutiennent le choix du modèle hybride pour les recherches hiérarchiques fréquentes.
 
 Les mesures concernent la catégorie sélectionnée et l'environnement local utilisé. Elles ne constituent pas une garantie de performance pour toutes les hiérarchies.
+
+### 11.8 Benchmark sur MongoDB Atlas
+
+Le benchmark a été exécuté sur la base partagée marketplace_db après la synchronisation des catégories.
+
+Deux séries de cinq répétitions ont été réalisées.
+
+#### Première série
+
+| Exécution | Parent References | Ancestors Array |
+|---|---:|---:|
+| 1 | 129 ms | 766 ms |
+| 2 | 110 ms | 99 ms |
+| 3 | 103 ms | 96 ms |
+| 4 | 104 ms | 95 ms |
+| 5 | 106 ms | 101 ms |
+| Moyenne | 110,4 ms | 231,4 ms |
+| Médiane | 106 ms | 99 ms |
+
+La première mesure de 766 ms constitue une valeur inhabituellement élevée.
+
+Sa cause exacte reste inconnue. La latence réseau, la charge du serveur et les mécanismes de cache constituent des explications possibles.
+
+Cette mesure est conservée dans les résultats.
+
+#### Deuxième série
+
+| Exécution | Parent References | Ancestors Array |
+|---|---:|---:|
+| 1 | 102 ms | 102 ms |
+| 2 | 103 ms | 107 ms |
+| 3 | 105 ms | 100 ms |
+| 4 | 104 ms | 99 ms |
+| 5 | 109 ms | 99 ms |
+| Moyenne | 104,6 ms | 101,4 ms |
+| Médiane | 104 ms | 100 ms |
+
+Les deux méthodes présentent des performances proches lors de cette deuxième série.
+
+Ancestors Array réduit le temps moyen de 3,06 % pour cette série.
+
+### 11.9 Résultats cumulés sur Atlas
+
+| Indicateur | Parent References | Ancestors Array |
+|---|---:|---:|
+| Nombre de mesures | 10 | 10 |
+| Moyenne globale | 107,5 ms | 166,4 ms |
+| Médiane globale | 104,5 ms | 99,5 ms |
+| Descendants retournés | 564 | 564 |
+| Comparaisons avec identifiants identiques | 10/10 | 10/10 |
+
+Les dix comparaisons ont retourné exactement les mêmes identifiants de catégories descendantes.
+
+La médiane globale favorise légèrement Ancestors Array.
+
+Cependant, la moyenne globale est affectée par la mesure de 766 ms et favorise Parent References.
+
+Il est donc nécessaire de considérer les moyennes, les médianes et les mesures individuelles.
+
+### 11.10 Comparaison locale et Atlas
+
+| Indicateur | Local | Atlas |
+|---|---:|---:|
+| Nombre total de catégories | 1 470 | 1 470 |
+| Descendants retournés | 564 | 564 |
+| Nombre de mesures par méthode | 5 | 10 |
+| Parent References - moyenne | 8,4 ms | 107,5 ms |
+| Ancestors Array - moyenne | 4,4 ms | 166,4 ms |
+| Parent References - médiane | 8 ms | 104,5 ms |
+| Ancestors Array - médiane | 4 ms | 99,5 ms |
+
+Les mesures distantes incluent la récupération des résultats par mongosh et les communications avec le serveur Atlas.
+
+Les résultats locaux et distants ne sont donc pas directement comparables comme des mesures isolées du temps de traitement du serveur.
+
+Le benchmark compare deux stratégies de recherche au sein de la même collection hybride. Il ne compare pas deux collections indépendantes utilisant exclusivement chacun des modèles.
+
+Les résultats soutiennent la pertinence fonctionnelle du modèle hybride, sans garantir une supériorité systématique d'une méthode.
 
 ## 12. Tests automatiques
 
@@ -517,25 +595,140 @@ Résultats globaux du module :
 
 Résultat final : 43 tests réussis et aucun échec.
 
-Les scripts de tests doivent uniquement être exécutés sur les bases locales dédiées.
+Les scripts seed_tests.js et test_search.js sont réservés aux bases locales dédiées. Le script test_invalid_filters.js, dans sa version validée en lecture seule, a également été exécuté sur Atlas : 8 tests réussis et aucun échec.
 
 ## 13. Intégration avec MongoDB Atlas
 
-La structure des produits a été vérifiée sur la base Atlas partagée avec l'équipe.
+L'intégration finale du module Search & Categories a été réalisée le 27 novembre 2026 avec l'autorisation de l'équipe.
 
-Le modèle de catégories est compatible avec les chemins hiérarchiques observés.
+### 13.1 Environnement
 
-Au 27 novembre 2026 :
+- Plateforme : MongoDB Atlas Free Tier (M0).
+- Base : marketplace_db.
+- Version MongoDB : 8.0.39.
+- Version mongosh : 2.14.0.
+- Fournisseur : AWS.
+- Région : Paris (eu-west-3).
 
-- Le dataset de 5 000 produits a été validé localement.
-- Les 1 470 catégories ont été générées localement.
-- La catégorie source officielle des produits a été confirmée.
-- Un import temporaire sur Atlas a été signalé comme réussi par le membre responsable du catalogue.
-- La compatibilité effective avec les reviews reste à confirmer.
-- Le remplacement définitif de la collection products reste en attente.
-- La création des index et la synchronisation des catégories sur Atlas restent en attente de validation collective.
+### 13.2 Vérification du catalogue
 
-Aucune modification des données ou des index de la base Atlas partagée n'a été effectuée par le module Search & Categories.
+Avant la synchronisation, les identifiants des produits locaux et Atlas ont été comparés.
+
+| Indicateur | Résultat |
+|---|---:|
+| Produits sur Atlas | 5 000 |
+| Identifiants uniques | 5 000 |
+| Identifiants locaux absents sur Atlas | 0 |
+| Identifiants supplémentaires sur Atlas | 0 |
+| Catégories principales manquantes | 39 |
+
+La comparaison confirme l'égalité des ensembles d'identifiants, sans constituer une comparaison exhaustive des champs des produits.
+
+### 13.3 Synchronisation et idempotence
+
+Le script sync_categories.js a été exécuté deux fois sur Atlas.
+
+| Indicateur | Première exécution | Deuxième exécution |
+|---|---:|---:|
+| Catégories détectées | 1 470 | 1 470 |
+| Catégories insérées | 1 470 | 0 |
+| Catégories modifiées | 0 | 0 |
+| Catégories inchangées | 0 | 1 470 |
+| Produits ignorés | 0 | 0 |
+| Produits avec catégorie principale dérivée | 39 | 39 |
+
+La deuxième exécution confirme l'idempotence séquentielle de la synchronisation.
+
+Les documents produits ne sont pas modifiés par cette opération.
+
+### 13.4 Validation de la navigation hiérarchique
+
+La catégorie sélectionnée est Hair Care dans l'espace de classification dérivé Beauty & Personal Care.
+
+| Indicateur | Local | Atlas |
+|---|---:|---:|
+| Catégories incluant Hair Care | 8 | 8 |
+| Catégories descendantes | 7 | 7 |
+| Produits retournés | 4 | 4 |
+
+Les identifiants des produits retournés sont identiques :
+
+- B01BO4M88C
+- B073CBMGRP
+- B08PC95NJ7
+- B099255BXG
+
+Les quatre produits possèdent une catégorie principale null dans les documents originaux.
+
+La navigation hiérarchique prend donc correctement en charge les catégories principales dérivées.
+
+### 13.5 Index des catégories sur Atlas
+
+| Index | Champ | Utilité |
+|---|---|---|
+| _id_ | _id | Identifiant MongoDB |
+| category_id_1 | category_id | Unicité |
+| idx_parent_id | parent_id | Recherche des enfants directs |
+| idx_ancestors | ancestors | Recherche des descendants |
+
+Nombre total d'index : 4.
+
+L'index unique category_id_1 contribue à empêcher la création de catégories en double.
+
+### 13.6 Intégrité finale
+
+| Indicateur | Résultat |
+|---|---:|
+| Produits | 5 000 |
+| Identifiants produits uniques | 5 000 |
+| Catégories | 1 470 |
+| Identifiants catégories uniques | 1 470 |
+| Index produits | 8 |
+| Index catégories | 4 |
+| Produits de sauvegarde conservés | 117 000 |
+| Tests de filtres invalides réussis | 8/8 |
+
+Aucun doublon d'identifiant produit ou catégorie n'a été détecté.
+
+La collection products_backup_117000 a été conservée.
+
+### 13.7 Stockage de la collection categories
+
+Statistiques finales obtenues avec db.categories.stats() :
+
+| Indicateur | Résultat |
+|---|---:|
+| Documents | 1 470 |
+| Taille logique des documents | 0,852 MiB |
+| Stockage des documents alloué | 0,344 MiB |
+| Taille des index | 0,531 MiB |
+| Stockage total alloué | 0,875 MiB |
+
+La taille totale allouée à la collection categories et à ses index est de 0,875 MiB.
+
+L'intégration des quatre nouveaux index produits a ajouté environ 0,246 MiB.
+
+Le surcoût total de stockage alloué associé à l'intégration du module est donc d'environ 1,121 MiB.
+
+Cette mesure concerne le module complet. Elle ne permet pas d'isoler le surcoût spécifique du tableau ancestors par rapport à un modèle utilisant uniquement parent_id.
+
+### 13.8 Vérification du quota Atlas
+
+| Indicateur | Avant intégration | Après intégration |
+|---|---:|---:|
+| Logical Size estimée | 381 MB | 410 MB |
+| Utilisation du quota | 74,4 % | 80,1 % |
+| Capacité restante estimée | 131 MB | 102 MB |
+
+Le quota du cluster est de 512 MB.
+
+Les valeurs Logical Size sont des estimations visuelles obtenues à partir du graphique Atlas.
+
+Le stockage alloué aux collections et la métrique Logical Size représentent des indicateurs différents.
+
+La variation globale ne peut pas être attribuée exclusivement au module Search & Categories, car le cluster est partagé.
+
+Voir [Atlas Validation Report](atlas_validation.md) pour les résultats détaillés.
 
 ## 14. Limites et perspectives
 
@@ -547,9 +740,13 @@ Aucune modification des données ou des index de la base Atlas partagée n'a ét
 - Les opérations bulkWrite ne constituent pas une transaction globale.
 - Les performances de synchronisation sur des volumes plus importants restent à évaluer.
 - Le benchmark hiérarchique concerne une catégorie sélectionnée.
-- Les mesures ont été effectuées dans un environnement local.
-- Le coût de stockage supplémentaire du modèle hybride n'a pas été mesuré expérimentalement.
-- L'intégration finale sur Atlas reste à valider.
+- Les mesures distantes incluent les communications réseau.
+- La cause exacte de la mesure de 766 ms reste inconnue.
+- Le benchmark compare deux stratégies de requêtes au sein du même modèle hybride.
+- Le stockage total du modèle hybride a été mesuré sur Atlas, mais le surcoût spécifique de chaque représentation hiérarchique n'a pas été isolé expérimentalement.
+- Les valeurs du quota Atlas sont approximatives.
+- Les résultats obtenus sur 5 000 produits ne garantissent pas les mêmes performances sur des volumes plus importants.
+- La compatibilité effective avec les reviews relève des autres travaux de l'équipe.
 
 ## 15. Conclusion
 
@@ -559,8 +756,25 @@ Les identifiants stables et la synchronisation par bulkWrite avec upsert permett
 
 La validation sur 5 000 produits réels a permis de générer 1 470 catégories et de prendre en charge les 39 produits dont la catégorie principale est manquante.
 
-Le benchmark expérimental montre que le modèle Ancestors Array réduit de 47,62 % le temps moyen de recherche des descendants pour la catégorie étudiée.
+Le benchmark local montre que la stratégie Ancestors Array réduit de 47,62 % le temps moyen de recherche des descendants pour la catégorie étudiée.
 
-Les 43 tests réussis et les validations locales confirment le fonctionnement des principales fonctionnalités du module.
+Les benchmarks Atlas confirment que les deux stratégies retournent exactement les mêmes 564 descendants.
 
-Voir [Final Validation Report](final_validation.md) pour les résultats détaillés et les instructions de reproduction.
+La médiane distante favorise légèrement Ancestors Array, tandis que la moyenne globale est affectée par une mesure exceptionnellement élevée.
+
+Les 43 tests locaux et les huit vérifications répétées avec succès sur Atlas confirment le fonctionnement des principales fonctionnalités testées.
+
+La synchronisation finale sur Atlas a généré 1 470 catégories uniques et son idempotence séquentielle a été vérifiée.
+
+Les 5 000 produits et la sauvegarde de 117 000 produits ont été préservés.
+
+Le stockage total alloué à la collection categories et à ses index est de 0,875 MiB.
+
+Le module Search & Categories est techniquement terminé et prêt pour l'intégration globale du projet.
+
+Documents complémentaires :
+
+- [Search Design](search_design.md)
+- [Final Local Validation Report](final_validation.md)
+- [Dataset Origin Validation](dataset_origin_validation.md)
+- [Atlas Validation Report](atlas_validation.md)

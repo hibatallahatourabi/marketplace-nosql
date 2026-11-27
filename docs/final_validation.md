@@ -24,6 +24,27 @@ The final shared dataset contains 5,000 products.
 | Decimal128 prices | 2,455 |
 
 Missing main categories are derived from the first element of the validated category path without modifying the original product documents.
+### Dataset origin validation
+
+The official Amazon Reviews 2023 ASIN-to-category mapping was analyzed using a standalone Python utility with streaming JSON parsing.
+
+| Metric | Result |
+|---|---:|
+| Mapping entries scanned | 35,393,189 |
+| Products analyzed | 5,000 |
+| Matched product IDs | 5,000 |
+| Unmatched product IDs | 0 |
+| Match rate | 100% |
+| Beauty and Personal Care | 5,000 |
+| All Beauty | 0 |
+
+All 5,000 products belong to the official Beauty and Personal Care source category.
+
+The internal category.main field must not be confused with the official source category.
+
+Actual review compatibility remains pending validation.
+
+See [Dataset Origin Validation](dataset_origin_validation.md) for the methodology and reproduction instructions.
 
 ## 3. Category synchronization
 
@@ -65,7 +86,7 @@ Selected criteria:
 |---|---:|
 | Matching products | 428 |
 | Price range [0, 50) | 401 |
-| Price range [50, 100] | 27 |
+| Price range [50, 100) | 27 |
 | Missing prices | 0 |
 | Rating bucket [4, 5.01) | 428 |
 
@@ -199,13 +220,19 @@ The import script requires an empty local products collection. Seed scripts must
 
 ## 11. Atlas integration status
 
-As of November 25, 2026, the shared Atlas database still contains 117,000 products and 2,215 missing main categories.
+As of November 27, 2026:
 
-The final 5,000-product dataset has been validated locally but has not yet replaced the shared Atlas dataset.
+- The original shared products collection contained 117,000 products during the previous read-only verification.
+- The final 5,000-product dataset has been validated locally.
+- A temporary import into products_import_test_5000 was reported successful by the Product Catalog member.
+- The official source category has been confirmed as Beauty and Personal Care for all 5,000 products.
+- Actual compatibility with the corresponding review dataset remains pending validation.
+- Final replacement of the shared products collection remains pending team approval.
+- Available Atlas cluster storage must be verified before deployment.
+- Shared index creation and category synchronization remain pending.
+- Final integration tests must be performed after the approved dataset replacement.
 
-Atlas integration is pending confirmation from the Product Catalog member and verification of available cluster storage.
-
-No Atlas data or indexes were modified during this validation phase.
+No Atlas data or indexes have been modified by the Search & Categories module during this validation phase.
 
 ## 12. Conclusion
 

@@ -113,8 +113,8 @@ def main():
 
     db = None
     if not a.dry_run:
-        from pymongo import ASCENDING, DESCENDING
         from src.db import get_db
+        from src.operations.indexes import ensure_review_indexes
         db = get_db()
         existing = db.reviews.estimated_document_count()
         if existing and not a.reset:
@@ -138,8 +138,7 @@ def main():
         db.reviews.insert_many(batch, ordered=False)
 
     if db is not None:
-        db.reviews.create_index([("product_id", ASCENDING), ("created_at", DESCENDING)])
-        db.reviews.create_index([("product_id", ASCENDING), ("rating", DESCENDING)])
+        print("index reviews :", ensure_review_indexes(db))
     print(dict(stats), "(dry-run, rien ecrit)" if a.dry_run else "")
     if not stats.get("gardees"):
         print("ATTENTION : 0 review gardee. exemple d'ID produit dans le dataset:", next(iter(known)))

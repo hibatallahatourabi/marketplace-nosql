@@ -5,13 +5,20 @@ SORTS = {"recent": ("created_at", -1), "helpful": ("helpful_vote", -1),
          "rating_desc": ("rating", -1), "rating_asc": ("rating", 1)}
 
 
-def get_reviews_page(product_id, page=1, page_size=10, sort="recent"):
+def sort_spec(sort):
+    """Tri principal + tri secondaire sur _id (pagination stable).
+    Le tri secondaire est de sens oppose, ce qui correspond exactement a un index
+    (champ dir, _id asc) parcouru dans un sens ou dans l'autre (voir src/operations/indexes.py)."""
     field, direction = SORTS[sort]
+    return [(field, direction), ("_id", 1 if direction == -1 else -1)]
+
+
+def get_reviews_page(product_id, page=1, page_size=10, sort="recent"):
     page, page_size = max(page, 1), min(max(page_size, 1), 100)
     col = get_db().reviews
     total = col.count_documents({"product_id": product_id})
     items = list(col.find({"product_id": product_id})
-                 .sort([(field, direction), ("_id", 1)])
+                 .sort(sort_spec(sort))
                  .skip((page - 1) * page_size).limit(page_size))
     return {"total": total, "page": page, "page_size": page_size, "items": items}
 

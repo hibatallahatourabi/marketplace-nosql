@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+venv/
+data/*.jsonl
+data/*.gz
+data/*.json
+data/reviews-membre3/

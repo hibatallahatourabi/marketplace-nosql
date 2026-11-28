@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.db import get_db
-from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, ensure_products_text_index, explain_summary
+from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, ensure_products_text_index, explain_summary, products_storage
 from src.queries.reviews import sort_spec, SORTS
 
 
@@ -27,7 +27,13 @@ def main():
         print("inventory : IGNORE ->", e)
 
     if a.text_index:
+        before = products_storage(db)
+        print("products AVANT :", before or "collStats indisponible : regarde la taille dans Compass")
         print("products (texte) :", ensure_products_text_index(db))
+        after = products_storage(db)
+        print("products APRES :", after or "collStats indisponible : regarde la taille dans Compass")
+        if before and after:
+            print("index ajoutes (Mo) :", round(after["index_total_mo"] - before["index_total_mo"], 3))
 
     if a.explain:
         sample = db.reviews.find_one({}, {"product_id": 1})

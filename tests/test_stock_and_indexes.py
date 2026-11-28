@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.operations import update_stock as us
-from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, explain_summary
+from src.operations.indexes import ensure_review_indexes, ensure_inventory_unique_index, explain_summary, ensure_products_text_index, products_storage
 from src.queries.reviews import sort_spec, SORTS
 
 
@@ -113,3 +113,18 @@ def test_explain_summary_plan_imbrique_queryPlan():
         "slotBasedPlan": {"slots": "..."}}}}
     stages, indexes = explain_summary(explain)
     assert stages == ["LIMIT", "FETCH", "IXSCAN"] and indexes == ["i"]
+
+
+def test_index_texte_nomme_et_reutilise_sans_toucher_aux_autres(db):
+    db.products.create_index([("brand", 1)], name="brand_1")
+    name = ensure_products_text_index(db)
+    assert name == "idx_product_text"
+    assert "brand_1" in [i["name"] for i in db.products.list_indexes()]
+    assert ensure_products_text_index(db) == "idx_product_text"      # idempotent
+
+
+def test_products_storage_tolere_collstats_indisponible():
+    class FakeDB:
+        def command(self, *a, **k):
+            raise RuntimeError("not allowed")
+    assert products_storage(FakeDB()) is None

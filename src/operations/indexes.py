@@ -53,7 +53,7 @@ def ensure_products_text_index(db):
     for idx in db.products.list_indexes():
         if "weights" in idx or any(v == "text" for v in idx["key"].values()):
             return idx["name"]
-    return db.products.create_index([("title", "text"), ("brand", "text")], name="idx_products_text",
+    return db.products.create_index([("title", "text"), ("brand", "text")], name="idx_product_text",
                                     weights={"title": 10, "brand": 3})
 
 
@@ -77,3 +77,16 @@ def explain_summary(explain):
 
     walk(winning)
     return stages, indexes
+
+
+def products_storage(db):
+    """Tailles de la collection products (Mo) pour comparer avant / apres la creation d'un index.
+    Retourne None si Atlas refuse la commande collStats."""
+    try:
+        st = db.command("collStats", "products")
+    except Exception:
+        return None
+    mb = lambda n: round(n / 1024 / 1024, 3)
+    return {"donnees_mo": mb(st.get("size", 0)), "stockage_mo": mb(st.get("storageSize", 0)),
+            "index_total_mo": mb(st.get("totalIndexSize", 0)),
+            "index": {k: mb(v) for k, v in st.get("indexSizes", {}).items()}}

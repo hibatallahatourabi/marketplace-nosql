@@ -66,6 +66,17 @@ def main():
         r = P.filter_products({"path": hair, "brand": brand, "min_rating": 4}, page_size=3)
         return {"brand": brand, **r}
 
+    def stock_step():
+        av = get_available(pid)
+        if av is not None:
+            return {"product_id": pid, "available": av}
+        # ce produit n'a pas de fiche inventory : on prend le premier produit qui en a une
+        doc = get_db().inventory.find_one({}, {"_id": 0, "product_id": 1})
+        if doc is None:
+            return {"product_id": pid, "available": None, "note": "la collection inventory est vide"}
+        return {"product_id": doc["product_id"], "available": get_available(doc["product_id"]),
+                "note": f"{pid} n'a pas de fiche inventory ; exemple pris sur un produit qui en a une"}
+
     # ordre d'execution : les facettes (5) passent avant l'etape 4, qui reutilise leur marque la plus frequente
     steps = [
         ("1. Produit par ID", f"find_product_by_id('{pid}')", lambda: P.find_product_by_id(pid)),
@@ -87,8 +98,7 @@ def main():
         ("8. Moyenne et nombre d'avis", f"get_rating_stats('{pid}')", lambda: R.get_rating_stats(pid)),
         ("9. Produit avec ses reviews ($lookup)", f"get_product_with_reviews('{pid}', limit=2)",
          lambda: R.get_product_with_reviews(pid, limit=2)),
-        ("10. Stock disponible (lecture seule)", f"get_available('{pid}')",
-         lambda: {"product_id": pid, "available": get_available(pid)}),
+        ("10. Stock disponible (lecture seule)", f"get_available('{pid}')", stock_step),
     ]
     final = steps
 

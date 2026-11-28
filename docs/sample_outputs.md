@@ -1,11 +1,11 @@
 # Sorties d'exemple - requetes du Membre 3
 
-Generees le 2026-11-28 09:53 UTC sur la base `marketplace_db` (5000 produits, 44938 reviews). Lecture seule. Textes longs raccourcis. Temps = une seule execution, indicatif.
+Generees le 2026-11-28 09:58 UTC sur la base `marketplace_db` (5000 produits, 44938 reviews). Lecture seule. Textes longs raccourcis. Temps = une seule execution, indicatif.
 
 ## 1. Produit par ID
 
 `find_product_by_id('B00BOJO7ZU')`  
-Statut : ok - temps indicatif : 87 ms
+Statut : ok - temps indicatif : 77 ms
 
 ```json
 {
@@ -136,7 +136,7 @@ Statut : ok - temps indicatif : 175 ms
 ## 3. Filtre categorie, prix et note
 
 `filter_products({'main': 'All Beauty', 'path': ['Beauty & Personal Care', 'Hair Care'], 'min_price': 0, 'max_price': 100, 'min_rating': 4}, page_size=3)`  
-Statut : ok - temps indicatif : 282 ms
+Statut : ok - temps indicatif : 258 ms
 
 ```json
 {
@@ -208,7 +208,7 @@ Statut : ok - temps indicatif : 282 ms
 ## 5. Recherche a facettes (Hair Care)
 
 `facets({'path': ['Beauty & Personal Care', 'Hair Care']})`  
-Statut : ok - temps indicatif : 257 ms
+Statut : ok - temps indicatif : 294 ms
 
 ```json
 {
@@ -295,7 +295,7 @@ Statut : ok - temps indicatif : 257 ms
 ## 4. Filtre marque et note minimale
 
 `filter_products({path, brand: <marque la plus frequente>, min_rating: 4})`  
-Statut : ok - temps indicatif : 183 ms
+Statut : ok - temps indicatif : 155 ms
 
 ```json
 {
@@ -367,7 +367,7 @@ Statut : ok - temps indicatif : 183 ms
 ## 6a. Categorie et descendants
 
 `category_with_descendants('All Beauty', ['Beauty & Personal Care', 'Hair Care'])`  
-Statut : ok - temps indicatif : 172 ms
+Statut : ok - temps indicatif : 175 ms
 
 ```json
 [
@@ -457,7 +457,7 @@ Statut : ok - temps indicatif : 172 ms
 ## 6b. Produits de la categorie et sous-categories
 
 `products_in_category('All Beauty', ['Beauty & Personal Care', 'Hair Care'], page_size=3)`  
-Statut : ok - temps indicatif : 220 ms
+Statut : ok - temps indicatif : 221 ms
 
 ```json
 {
@@ -529,7 +529,7 @@ Statut : ok - temps indicatif : 220 ms
 ## 7a. Reviews paginees, page 1 (les plus recentes)
 
 `get_reviews_page('B00BOJO7ZU', page=1, page_size=3)`  
-Statut : ok - temps indicatif : 162 ms
+Statut : ok - temps indicatif : 156 ms
 
 ```json
 {
@@ -577,7 +577,7 @@ Statut : ok - temps indicatif : 162 ms
 ## 7b. Reviews paginees, page 2 (les plus utiles)
 
 `get_reviews_page('B00BOJO7ZU', page=2, page_size=3, sort='helpful')`  
-Statut : ok - temps indicatif : 168 ms
+Statut : ok - temps indicatif : 152 ms
 
 ```json
 {
@@ -603,7 +603,7 @@ Statut : ok - temps indicatif : 168 ms
 ## 8. Moyenne et nombre d'avis
 
 `get_rating_stats('B00BOJO7ZU')`  
-Statut : ok - temps indicatif : 81 ms
+Statut : ok - temps indicatif : 74 ms
 
 ```json
 {
@@ -623,7 +623,7 @@ Statut : ok - temps indicatif : 81 ms
 ## 9. Produit avec ses reviews ($lookup)
 
 `get_product_with_reviews('B00BOJO7ZU', limit=2)`  
-Statut : ok - temps indicatif : 84 ms
+Statut : ok - temps indicatif : 80 ms
 
 ```json
 {
@@ -704,11 +704,12 @@ Statut : ok - temps indicatif : 84 ms
 ## 10. Stock disponible (lecture seule)
 
 `get_available('B00BOJO7ZU')`  
-Statut : ok - temps indicatif : 75 ms
+Statut : ok - temps indicatif : 155 ms
 
 ```json
 {
   "product_id": "B00BOJO7ZU",
-  "available": null
+  "available": null,
+  "note": "la collection inventory est vide"
 }
 ```
